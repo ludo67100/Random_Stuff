@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Apr 25 13:13:29 2019
-
 @author: ludovic.spaeth
 """
 
@@ -17,20 +16,20 @@ grid = np.array([[1,2,3,4],[5,6,7,8]])
 ch = 0
 
 window = [0.4,0.6] #in seconds
-baseline = [0.4,0.45] #in seconds
+baseline = [0.495,0.499] #in seconds
 stim = [0.50,0.010] # start and duration in seconds
 
 holdings = [-70,-50,0]
-holdings = [-70]
+#holdings = [-70,-50]
 
 
 savefig = False
-savedata = False
-savedir = 'U:/01_ANALYSIS/MF_BINDA'
+savedata = True
+savedir = 'C:/Users/ludov/Documents/MF_BINDA/ANALYSIS'
 
 bl_start = 0
 
-url = 'U:/RAW DATA/MF_BINDA/Sorted/18-04-2019/Cell_1a'
+url = 'C:/Users/ludov/Documents/MF_BINDA/Sorted/18-04-2019/Cell_1a'
 name = '180419_1a'
 
 RAW_SIGS = [] #For raw sigs as matrix and avg sigs as arrays
@@ -58,6 +57,8 @@ for holding, idx in zip(holdings,range(len(holdings))):
     win_end = np.where(time_vector>=window[1])[0][0]   
     
     signals = np.zeros((grid.size,len(time_vector),len(file_list))) #The matrix for raw traces
+
+    #ADD FUCKING TAGGING SYSTEM FOR LATER
     
     
     for file, idx in zip(file_list, range(len(file_list))):
@@ -68,24 +69,30 @@ for holding, idx in zip(holdings,range(len(holdings))):
         
         block = reader.read_block()
         
-        for sweep in range(grid.size):
+        for site in range(grid.size):
             
-            sig = np.ravel(block.segments[sweep].analogsignals[ch].magnitude)
+            sig = np.ravel(block.segments[site].analogsignals[ch].magnitude)
             
             bl_begin = np.where(time_vector>=baseline[0])[0][0]
             bl_end = np.where(time_vector>=baseline[1])[0][0]
             leak = np.mean(sig[bl_begin:bl_end])
             signal = sig - leak
-            
-#            trunc_time = time_vector[win_begin:win_end]
-#            trunc_sig = signal[win_begin:win_end]
        
-            if holding == 0 : #So inhibition
+            if holding == 0 : #So inhibition, traces have to be cleaned manually 
                 
+                print('')
+                
+                print ('H=0mV, site#{}, sweep#{}'.format(site,idx))
+                
+                BL = np.nanmean(signal[bl_begin:bl_end])
+                       
                 plt.figure()
                 plt.axvspan(stim[0],stim[0]+stim[1],color='skyblue',alpha=0.5) #For the stim
-                plt.xlim(0.4,0.6)
-                plt.plot(time_vector,sig)
+                plt.xlim(0.45,0.55)
+                plt.ylim(-200,200)
+                plt.plot(time_vector,np.ones(len(time_vector))*BL,label='baseline')
+                plt.plot(time_vector,signal,label='signal')
+                plt.legend(loc='best')
                 plt.pause(0.1)
                 plt.show(block=False)
             
@@ -97,31 +104,49 @@ for holding, idx in zip(holdings,range(len(holdings))):
                 if decide == 'n':      
                     nans = np.zeros(len(signal))
                     nans[:] = np.nan
-                    signals[sweep,:,idx] = nans
+                    signals[site,:,idx] = nans
                     plt.close()
                     
                 else:
-                    signals[sweep,:,idx] = signal
+                    signals[site,:,idx] = signal
                     plt.close()
+                
             else:
-                signals[sweep,:,idx] = signal
+                signals[site,:,idx] = signal
+                
 
     #Append traces to matrices for later
     RAW_SIGS.append(signals)  
-     
+
+print ('MANUAL SORTING: DONE.')
+print ('Computing & saving...')
+    
 #------------------------------Now the serious shit----------------------------
 
-
-AVG_SIGS = []
-for site in range(grid.size):
-    AVG_SIGS.append(np.nanmean(RAW_SIGS[0][site,:,:],axis=1))
-plt.figure()
-plt.plot(AVG_SIGS[0])
-
-
-
-
-
-
-
+with pd.ExcelWriter('{}/{}_cleaned_avg_recordings.xlsx'.format(savedir,name)) as writer:
+        
+    for holding, holding_idx in zip(holdings, range(len(holdings))):
     
+        AVG_SIGS = []
+        for site in range(grid.size):
+            AVG_SIGS.append(np.nanmean(RAW_SIGS[holding_idx][site,:,:],axis=1))
+        plt.figure()
+        plt.plot(AVG_SIGS[0])
+        plt.title('{} site 1 : average recording at H={}mV'.format(name,holding))
+
+        #Make col names for dataframe and index 
+        cols = np.arange(0,grid.size)+1 #Site ID
+        cols = cols.astype(str)
+        indexes = time_vector
+
+        #Put the sigs in a dataframe
+        Average_sigs = pd.DataFrame(np.asarray(AVG_SIGS).transpose(),
+                                    columns=cols,index=indexes)
+        
+        
+        #Save the data (or not)
+        if savedata == True:
+            Average_sigs.to_excel(writer,sheet_name='H={}mV'.format(holding),na_rep='nan')
+        
+
+        
