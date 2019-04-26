@@ -20,8 +20,6 @@ baseline = [0.495,0.499] #in seconds
 stim = [0.50,0.010] # start and duration in seconds
 
 holdings = [-70,-50,0]
-#holdings = [-70,-50]
-
 
 savefig = False
 savedata = True
@@ -41,7 +39,8 @@ for holding, idx in zip(holdings,range(len(holdings))):
     
     path = '{}/{}'.format(url,str(holding))
     file_list = sorted(os.listdir(path))
-    
+    print ('-------------------------------------')
+    print ('Files loaded for {}mV holding'.format(holding))
     print (file_list)
     
     #Basic info 
@@ -58,7 +57,10 @@ for holding, idx in zip(holdings,range(len(holdings))):
     
     signals = np.zeros((grid.size,len(time_vector),len(file_list))) #The matrix for raw traces
 
-    #ADD FUCKING TAGGING SYSTEM FOR LATER
+    #FUCKING TAGGING SYSTEM FOR LATER : matrix filled with 0 for discarded sweeps
+    #1 == the sweep has been kept 
+    
+    I_tags = np.zeros((grid.size,len(file_list))) #Tags for inhibition traces
     
     
     for file, idx in zip(file_list, range(len(file_list))):
@@ -109,6 +111,7 @@ for holding, idx in zip(holdings,range(len(holdings))):
                     
                 else:
                     signals[site,:,idx] = signal
+                    I_tags[site,idx]=1
                     plt.close()
                 
             else:
@@ -120,6 +123,14 @@ for holding, idx in zip(holdings,range(len(holdings))):
 
 print ('MANUAL SORTING: DONE.')
 print ('Computing & saving...')
+
+tag_index = np.arange(0,grid.size,1)+1
+tag_index = tag_index.astype(str)
+for i in range(len(tag_index)):
+    tag_index[i] = 'Site#'+tag_index[i]
+    
+I_tags_df = pd.DataFrame(I_tags,index=tag_index)
+I_tags_df.to_excel('{}/{}_inhibition_tag_list.xlsx'.format(savedir,name))
     
 #------------------------------Now the serious shit----------------------------
 
@@ -147,6 +158,3 @@ with pd.ExcelWriter('{}/{}_cleaned_avg_recordings.xlsx'.format(savedir,name)) as
         #Save the data (or not)
         if savedata == True:
             Average_sigs.to_excel(writer,sheet_name='H={}mV'.format(holding),na_rep='nan')
-        
-
-        
