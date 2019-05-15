@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon May 13 17:47:26 2019
+Created on Wed May 15 11:27:05 2019
 
 @author: ludovic.spaeth
 """
 
-def fit_noise_half_norm(noise, polarity='excitation', method='half_gauss',closefig=True,title=None,
+def fit_noise_half_norm(noise, bins, polarity='excitation', method='half_gauss',closefig=True,title=None,
                         savefig=False,url=None):
     
     '''
@@ -31,14 +31,19 @@ def fit_noise_half_norm(noise, polarity='excitation', method='half_gauss',closef
     from matplotlib import pyplot as plt 
     from scipy.optimize import curve_fit
 
-    def gaussian(x, mu, sigma):
-        return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sigma, 2.)))
+    def gaussian(x, mu, sigma,A):
+        return A*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sigma, 2.)))
     
     def gauss(x, a, b, c, d):
         return a*np.exp(-np.power((x - b), 2.)/(2. * c**2.)) + d
     
     def half_gauss(x,sigma):
         return 2*sigma/np.pi*np.exp(-x**2*sigma**2/np.pi)
+    
+    def bimodal(x,mu1,sigma1,A1,mu2,sigma2,A2):
+        return gaussian(x,mu1,sigma1,A1)+gaussian(x,mu2,sigma2,A2)        
+    
+    
     
     if polarity == 'excitation': #Extract negative values only
         reverse_noise = [item*-1 for item in noise if item<=0]
@@ -49,13 +54,14 @@ def fit_noise_half_norm(noise, polarity='excitation', method='half_gauss',closef
     
     plt.figure()
     plt.title('Gaussian fit {}'.format(title))
-    n,bins,patches, = plt.hist(reverse_noise, 100,density=0,facecolor='gray',alpha=0.5, label='noise distrubution') #Histogram
+    n,bins,patches, = plt.hist(reverse_noise, bins=bins,density=0,facecolor='gray',alpha=0.5, label='noise distrubution') #Histogram
     
     x = bins[:-1]
     y = n
     n = len(x)
     
     px = np.linspace(np.min(x),np.max(x),n)
+    
     
     if method == 'half_gauss':
         popt, pcov = curve_fit(half_gauss,x,y)
@@ -69,9 +75,10 @@ def fit_noise_half_norm(noise, polarity='excitation', method='half_gauss',closef
         
     if method == 'gaussian':
         popt, pcov = curve_fit(gaussian,x,y)
-        mu = popt[0]
+        mu = popt[0]        
         sigma = popt[1]
-        py = gaussian(px,mu,sigma)
+        A = popt[2]
+        py = gaussian(px,mu,sigma,A)
         
         spline = UnivariateSpline(px, py-np.max(py)/2,s=0) #Plane for HWHM
         root_x = float(spline.roots()[0])
@@ -94,6 +101,25 @@ def fit_noise_half_norm(noise, polarity='excitation', method='half_gauss',closef
             root_x = float(spline.roots())
         root_y = gauss(root_x,a,b,c,d)
         
+    if method == 'bimodal':
+        popt, pcov = curve_fit(bimodal,x,y)
+        a = popt[0]
+        b = popt[1]
+        c = popt[2]
+        d = popt[3]
+        py = bimodal(px,*popt)
+        
+        spline = UnivariateSpline(px, py-np.max(py)/2,s=0) #Plane for HWHM
+        if len(spline.roots()) > 1:
+            print (spline.roots())
+            root_x = float(spline.roots()[1])
+        else:
+            print (spline.roots())
+            root_x = float(spline.roots())
+        root_y = bimodal(root_x,*popt)
+        
+
+        
     plt.plot(px,py, linewidth=2,color='orange',label='gaussian fit')
 
     plt.scatter(root_x,root_y,label='HWHM={}'.format(round(root_x,2)),s=30,color='red')
@@ -109,3 +135,24 @@ def fit_noise_half_norm(noise, polarity='excitation', method='half_gauss',closef
         
     
     return root_x 
+    
+    
+if __name__ == '__main__' :
+
+    import pandas as pd 
+    import numpy as np
+    
+    path = 'U:/01_ANALYSIS/data Theo inhibition/20-02-2019_DATAS.xlsx'
+    
+    inhibition_noise_1 = np.ravel(pd.read_excel(path,sheet_name='noise AI1').values)
+    
+    inhibition_noise_2 = np.ravel(pd.read_excel(path,sheet_name='noise AI2').values)
+    
+    noisemap = np.vstack((inhibition_noise_1,inhibition_noise_2)).ravel()
+    
+    
+    a = fit_noise_half_norm(noisemap,bins=40,polarity='inhbition',method='bimodal',closefig=False)
+
+    
+    
+    
