@@ -1,11 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed May 15 11:27:05 2019
-
-@author: ludovic.spaeth
-"""
-
-def fit_noise_half_norm(noise, bins, polarity='excitation', method='half_gauss',closefig=True,title=None,
+def fit_noise(noise, bins, polarity='excitation', method='half_gauss',closefig=True,title=None,
                         savefig=False,url=None):
     
     '''
@@ -13,6 +6,7 @@ def fit_noise_half_norm(noise, bins, polarity='excitation', method='half_gauss',
     
     INPUTS
     noise (1D-array) : the distribution, canonically noise array from uncaging experiment
+    bins (int) : number of bins for histogram
     polarity (str) : 'excitation' for EPSC based noise, 'inhibitory' for IPSC based noise
     method (str) : 'half_gauss', 'gaussian' or 'gauss' fit function 
     closefig (bool) : if True, will not display the figure
@@ -135,23 +129,6 @@ def fit_noise_half_norm(noise, bins, polarity='excitation', method='half_gauss',
         
     
     return root_x 
-    
-    
-if __name__ == '__main__' :
-
-    import pandas as pd 
-    import numpy as np
-    
-    path = 'U:/01_ANALYSIS/data Theo inhibition/20-02-2019_DATAS.xlsx'
-    
-    inhibition_noise_1 = np.ravel(pd.read_excel(path,sheet_name='noise AI1').values)
-    
-    inhibition_noise_2 = np.ravel(pd.read_excel(path,sheet_name='noise AI2').values)
-    
-    noisemap = np.vstack((inhibition_noise_1,inhibition_noise_2)).ravel()
-    
-    
-    a = fit_noise_half_norm(noisemap,bins=40,polarity='inhbition',method='bimodal',closefig=False)
 
     
     
