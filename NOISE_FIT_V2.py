@@ -35,7 +35,7 @@ def noiseFit(gridOfNoise,bins, plot=True):
         return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sigma, 2.)))
    
     #Compute noise histogram
-    n,bins = np.histogram(noiseToFit, number_bin_fit,density=1)
+    n,bins = np.histogram(noiseToFit, bins,density=1)
 
     #Determine fit parameters to normal function
     (mu,sigma) = stats.norm.fit(noiseToFit)
@@ -55,7 +55,7 @@ def noiseFit(gridOfNoise,bins, plot=True):
     #Plot if needed
     if plot == True:
         noisefig, noiseplot = plt.subplots(1,2)
-        n,bins,patches, = noiseplot[0].hist(noiseToFit, number_bin_fit,density=1,facecolor='gray',alpha=0.5, label='noise distrubution',zorder=1) #Histogram
+        n,bins,patches, = noiseplot[0].hist(noiseToFit, bins,density=1,facecolor='gray',alpha=0.5, label='noise distrubution',zorder=1) #Histogram
         noiseplot[0].plot(x_dummy,gaussianFit/factor,label='Gaussian Fit',zorder=2)
         noiseplot[0].scatter(mu+sigma,gaussian(mu+sigma,mu,sigma)/factor,label='Sigma={}'.format(round(mu+sigma,2)),zorder=3)
         noiseplot[0].legend(loc='best') 
